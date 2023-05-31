@@ -1,0 +1,79 @@
+#include <iostream>
+#include <stdlib.h>
+#include <array>
+#include <functional>
+#include <string>
+using namespace std;
+
+//For the purpose of open mp
+#include<omp.h>
+
+//to calculate CPU execution time
+#include <chrono>
+
+void s_bubble(int *, int);
+void p_bubble(int *, int);
+
+//Sequential Bubble Sort
+void s_bubble(int *a, int n) {
+	for (int i = 0; i < n; i++) {
+		int first = i % 2;
+		for (int j = first; j < n - 1; j += 2) {
+			if (a[j] > a[j + 1]) {
+				swap(a[j], a[j + 1]);
+			}
+		}
+	}
+}
+
+//Paralle Bubble sort using shared directive and user defined number of thread
+void p_bubble(int *a, int n) {
+	for (int i = 0; i < n; i++) {
+		int first = i % 2;
+		//starting the parallel thread for loop
+		//num of thread are 2 due to no of cpu core
+		#pragma omp parallel for shared(a, first) num_threads(2)
+		for (int j = first; j < n - 1; j += 2) {
+			if (a[j] > a[j + 1]) {
+				swap(a[j], a[j + 1]);
+			}
+		}
+	}
+}
+
+string timeCalulator(function<void()> sort_fn)
+{
+	auto start = chrono::high_resolution_clock::now();
+	sort_fn();
+	auto stop = chrono::high_resolution_clock::now();
+	auto result = stop - start;
+	auto duration = chrono::duration_cast<chrono::milliseconds>(result);
+	return to_string(duration.count());
+}
+
+int main() {
+	
+	int *a, n;
+	cout << "Specify array length.\n";
+	cin >> n;
+	a = new int[n];
+	
+	//creating array of random number for testing purpose
+	for (int i = 0; i < n; i++) {
+		a[i] = rand() % n;
+	}
+	
+	cout << "Generated random array of length " << n << "\n\n";
+	
+	//calling the function and calculating the time for sequential search
+	cout << "Sequential Bubble sort: " << timeCalulator([&]{ s_bubble(a, n); }) << "ms\n";
+	
+	//calling the function and calculating the time for parallel search
+	//setting the thread befor executing parallel programming
+	omp_set_num_threads(2);
+	cout << "Parallel (2) Bubble sort: "<< timeCalulator([&]{ p_bubble(a, n); }) << "ms\n";
+
+	return 0;
+}
+//g++ -fopenmp BFS.cpp -o BFS
+//./BFS
